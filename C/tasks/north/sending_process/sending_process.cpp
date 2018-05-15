@@ -25,10 +25,12 @@ using namespace std;
 
 int main(int argc, char** argv)
 {
+	SendingProcess* handle;
 	// Instantiate the SendingProcess class
 	try
 	{
 		SendingProcess sendigProcess(argc, argv);
+		handle = &sendigProcess;
 	}
 	catch (const std::exception & e)
 	{
@@ -40,7 +42,7 @@ int main(int argc, char** argv)
 	Logger* logger = Logger::getLogger();
 
 	// Start processing
-	logger->info("SendingProcess class initialised");
+	logger->info("SendingProcess class initialised with StreamID %d", handle->getStreamId());
 
 	/**
 	 * Add some processing here

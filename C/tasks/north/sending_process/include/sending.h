@@ -22,6 +22,12 @@ class SendingProcess : public FogLampProcess
 
 		// Destructor
 		~SendingProcess();
+
+	public:
+		int getStreamId() const;
+
+	private:
+		int m_stream_id;
 };
 
 #endif
