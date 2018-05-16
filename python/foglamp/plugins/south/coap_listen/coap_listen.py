@@ -16,7 +16,7 @@ import cbor2
 
 from foglamp.common import logger
 from foglamp.plugins.common import utils
-from foglamp.services.south.ingest import Ingest
+from foglamp.services.south.ingest2 import Ingest
 
 __author__ = "Terris Linenbach"
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"

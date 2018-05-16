@@ -16,7 +16,7 @@ from foglamp.common import logger
 from foglamp.plugins.common import utils
 from foglamp.plugins.south.common.sensortag_cc2650 import *
 from foglamp.services.south import exceptions
-from foglamp.services.south.ingest import Ingest
+from foglamp.services.south.ingest2 import Ingest
 
 __author__ = "Amarendra K Sinha"
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"

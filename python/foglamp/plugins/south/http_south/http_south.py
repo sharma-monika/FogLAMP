@@ -14,7 +14,7 @@ from aiohttp import web
 from foglamp.common import logger
 from foglamp.common.web import middleware
 from foglamp.plugins.common import utils
-from foglamp.services.south.ingest import Ingest
+from foglamp.services.south.ingest2 import Ingest
 
 __author__ = "Amarendra K Sinha"
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"

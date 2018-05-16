@@ -7,7 +7,10 @@
 """FogLAMP Sensor Readings Ingest API"""
 
 import asyncio
-from typing import List
+import datetime
+import time
+import uuid
+from typing import List, Union
 import json
 from foglamp.common import logger
 from foglamp.common.statistics import Statistics
@@ -204,7 +207,7 @@ class Ingest(object):
             config['max_readings_insert_batch_reconnect_wait_seconds']['value'])
 
     @classmethod
-    async def start(cls):
+    async def start(cls, core_mgt_host, core_mgt_port, parent):
         """Starts the server"""
         if cls._started:
             return
@@ -278,7 +281,9 @@ class Ingest(object):
         _LOGGER.info("Ingest statistics writer stopped")
 
     @classmethod
-    async def add_readings(cls, data: dict)->None:
+    async def add_readings(cls, asset: str, timestamp: Union[str, datetime.datetime],
+                           key: Union[str, uuid.UUID] = None, readings: dict = None) -> None:
+
         """Sends asset readings to storage layer
 
         Args:
@@ -301,25 +306,18 @@ class Ingest(object):
         """
 
         cls._num_readings += 1
+        read = dict()
+        read['asset_code'] = asset
+        read['read_key'] = str(key)
+        read['reading'] = readings
+        read['user_ts'] = timestamp
+
+        payload = dict()
+        payload['readings'] = []
+        payload['readings'].append(read)
         try:
-            payload = dict()
-            payload['readings'] = data
             cls.readings_storage.append(json.dumps(payload))
-        except StorageServerError as ex:
-            err_response = ex.error
-            # if key error in next, it will be automatically in parent except block
-            if err_response["retryable"]:  # retryable is bool
-                # raise and exception handler will retry
-                _LOGGER.warning("Got %s error, retrying ...", err_response["source"])
-                raise
-            else:
-                # not retryable
-                _LOGGER.error("%s, %s", err_response["source"], err_response["message"])
-                batch_size = len(readings_list)
-                cls._discarded_readings_stats += batch_size
-        except Exception:
+        except (Exception, StorageServerError) as ex:
             cls._num_discarded_readings += 1
-            _LOGGER.exception(
-                "Database error occurred. Payload:\n%s",
-                data)
+            _LOGGER.exception("Database error occurred. Payload:\n%s \n%s", payload, str(ex))
             raise
