@@ -10,7 +10,7 @@ import json
 import asyncio
 from foglamp.services.south import exceptions
 from foglamp.common import logger
-from foglamp.services.south.ingest import Ingest
+from foglamp.services.south.ingest2 import Ingest
 from foglamp.services.common.microservice import FoglampMicroservice
 from aiohttp import web
 
