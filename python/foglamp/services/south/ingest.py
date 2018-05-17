@@ -600,7 +600,7 @@ class Ingest(object):
 
         if list_size == cls._readings_insert_batch_size:
             cls._readings_list_batch_size_reached[list_index].set()
-            _LOGGER.debug('Set event list index: %s size: %s', cls._current_readings_list_index, len(list))
+            _LOGGER.debug('Set event list index: %s size: %s', cls._current_readings_list_index, len(readings_list))
 
         # When the current list is full, move on to the next list
         if cls._max_concurrent_readings_inserts > 1 and (
