@@ -372,6 +372,8 @@ class Ingest(object):
             attempt = 0
             cls._last_insert_time = time.time()
 
+            loop = asyncio.get_event_loop()
+
             # Perform insert. Retry when fails.
             while True:
                 _LOGGER.debug('Begin insert: Queue index: %s Batch size: %s', list_index, len(readings_list))
@@ -380,7 +382,7 @@ class Ingest(object):
                     payload = dict()
                     payload['readings'] = readings_list
                     try:
-                        asyncio.ensure_future(cls.readings_storage_async.append(json.dumps(payload)))
+                        asyncio.ensure_future(cls.readings_storage_async.append(json.dumps(payload)), loop=loop)
                         batch_size = len(readings_list)
                         cls._readings_stats += batch_size
                     except StorageServerError as ex:
@@ -410,7 +412,7 @@ class Ingest(object):
                         batch_size = len(readings_list)
                         cls._discarded_readings_stats += batch_size
                         _LOGGER.warning('Insert failed: Queue index: %s Batch size: %s', list_index, batch_size)
-                        break
+                    break
 
             del readings_list[:batch_size]
 
@@ -593,7 +595,7 @@ class Ingest(object):
 
         list_size = len(readings_list)
 
-        _LOGGER.debug('Add readings list index: %s size: %s', cls._current_readings_list_index, list_size)
+        # _LOGGER.debug('Add readings list index: %s size: %s', cls._current_readings_list_index, list_size)
 
         if list_size == 1:
             cls._readings_list_not_empty[list_index].set()
@@ -608,7 +610,7 @@ class Ingest(object):
             # Start at the beginning to reduce the number of connections
             for list_index in range(cls._max_concurrent_readings_inserts):
                 if len(cls._readings_lists[list_index]) < cls._readings_insert_batch_size:
-                    _LOGGER.debug('Change Ingest Queue: from #%s (len %s) to %s', cls._current_readings_list_index,
+                    _LOGGER.debug('Change Ingest Queue: from #%s (len %s) to #%s', cls._current_readings_list_index,
                                   len(cls._readings_lists[list_index]), list_index)
                     cls._current_readings_list_index = list_index
                     break
