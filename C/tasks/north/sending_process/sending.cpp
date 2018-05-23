@@ -38,7 +38,7 @@ SendingProcess::~SendingProcess()
 SendingProcess::SendingProcess(int argc, char** argv) : FogLampProcess(argc, argv)
 {
 	// Get streamID from command line
-	m_stream_id = atoi(this->getOptionalArgValue("--stream-id=").c_str());
+	m_stream_id = atoi(this->getArgValue("--stream-id=").c_str());
 }
 
 int SendingProcess::getStreamId() const
