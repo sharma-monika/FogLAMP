@@ -12,6 +12,7 @@
  */
 
 #include <process.h>
+#include <thread>
 
 // SendingProcess class
 class SendingProcess : public FogLampProcess
@@ -25,9 +26,16 @@ class SendingProcess : public FogLampProcess
 
 	public:
 		int getStreamId() const;
+		bool isRunning() const;
+		void stopRunning();
 
+	public:
+		std::vector<std::string> m_buffer;
+		std::thread		*m_thread_load;
+		std::thread		*m_thread_send;
 	private:
-		int m_stream_id;
+		bool			m_running;
+		int 			m_stream_id;
 };
 
 #endif

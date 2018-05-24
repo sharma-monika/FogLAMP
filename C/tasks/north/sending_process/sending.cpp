@@ -27,11 +27,19 @@
 // Complete the JSON data
 #define CONFIG_DEFAULT "{}"
 
+// Buffer max elements
+#define DATA_BUFFER_ELMS 10
+
 using namespace std;
+
+// Mutex for m_buffer access
+std::mutex	cReadMutex;
 
 // Destructor
 SendingProcess::~SendingProcess()
 {
+	delete m_thread_load;
+	delete m_thread_send;
 }
 
 // Constructor
@@ -39,9 +47,32 @@ SendingProcess::SendingProcess(int argc, char** argv) : FogLampProcess(argc, arg
 {
 	// Get streamID from command line
 	m_stream_id = atoi(this->getArgValue("--stream-id=").c_str());
+
+	// Set buffer
+	m_buffer.resize(DATA_BUFFER_ELMS);
+
+	// Mark running state
+	m_running = true;
+
+	Logger::getLogger()->info("SendingProcess class init with stream id (%d), buffer elms (%d)",
+				  m_stream_id,
+				  DATA_BUFFER_ELMS);
 }
 
+// Return the stream id
 int SendingProcess::getStreamId() const
 {
 	return m_stream_id;
+}
+
+// Return running state
+bool SendingProcess::isRunning() const
+{
+	return m_running;
+}
+
+// Set running stop state
+void SendingProcess::stopRunning()
+{
+	m_running = false;
 }
