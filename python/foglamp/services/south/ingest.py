@@ -219,7 +219,6 @@ class Ingest(object):
         # the buffer size.
         if cls._readings_list_size < cls._readings_insert_batch_size:
             cls._readings_list_size = cls._readings_insert_batch_size
-
             _LOGGER.warning('Readings buffer size as configured (%s) is too small; increasing '
                             'to %s', cls._readings_buffer_size,
                             cls._readings_list_size * cls._max_concurrent_readings_inserts)
@@ -372,20 +371,18 @@ class Ingest(object):
             attempt = 0
             cls._last_insert_time = time.time()
 
-            loop = asyncio.get_event_loop()
-
             # Perform insert. Retry when fails.
             while True:
-                _LOGGER.debug('Begin insert: Queue index: %s Batch size: %s', list_index, len(readings_list))
+                # _LOGGER.debug('Begin insert: Queue index: %s Batch size: %s', list_index, len(readings_list))
 
                 try:
                     payload = dict()
                     payload['readings'] = readings_list
                     try:
-                        asyncio.ensure_future(cls.readings_storage_async.append(json.dumps(payload)), loop=loop)
+                        asyncio.ensure_future(cls.readings_storage_async.append(json.dumps(payload)))
                         batch_size = len(readings_list)
                         cls._readings_stats += batch_size
-                        _LOGGER.debug("Inserted %s records", batch_size)
+                        # _LOGGER.debug("Inserted %s records", batch_size)
                     except StorageServerError as ex:
                         err_response = ex.error
                         # if key error in next, it will be automatically in parent except block
@@ -399,7 +396,7 @@ class Ingest(object):
                             batch_size = len(readings_list)
                             cls._discarded_readings_stats += batch_size
 
-                    _LOGGER.debug('End insert: Queue index: %s Batch size: %s', list_index, batch_size)
+                    # _LOGGER.debug('End insert: Queue index: %s Batch size: %s', list_index, batch_size)
                     break
                 except Exception as ex:
                     attempt += 1
@@ -603,7 +600,7 @@ class Ingest(object):
 
         if list_size == cls._readings_insert_batch_size:
             cls._readings_list_batch_size_reached[list_index].set()
-            _LOGGER.debug('Set event list index: %s size: %s', cls._current_readings_list_index, len(readings_list))
+            # _LOGGER.debug('Set event list index: %s size: %s', cls._current_readings_list_index, len(readings_list))
 
         # When the current list is full, move on to the next list
         if cls._max_concurrent_readings_inserts > 1 and (
@@ -611,7 +608,7 @@ class Ingest(object):
             # Start at the beginning to reduce the number of connections
             for list_index in range(cls._max_concurrent_readings_inserts):
                 if len(cls._readings_lists[list_index]) < cls._readings_insert_batch_size:
-                    _LOGGER.debug('Change Ingest Queue: from #%s (len %s) to #%s', cls._current_readings_list_index,
-                                  len(cls._readings_lists[list_index]), list_index)
+                    # _LOGGER.debug('Change Ingest Queue: from #%s (len %s) to #%s', cls._current_readings_list_index,
+                    #               len(cls._readings_lists[list_index]), list_index)
                     cls._current_readings_list_index = list_index
                     break
