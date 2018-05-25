@@ -407,15 +407,14 @@ class Ingest(object):
                     attempt += 1
 
                     # TODO logging each time is overkill
-                    _LOGGER.exception('Insert failed on attempt #%s, list index: %s | %s',
-                                      attempt, list_index, str(ex))
+                    _LOGGER.exception('Insert failed on attempt #%s, list index: %s | %s', attempt, list_index, str(ex))
 
                     if cls._stop or attempt >= _MAX_ATTEMPTS:
                         # Stopping. Discard the entire list upon failure.
                         batch_size = len(readings_list)
                         cls._discarded_readings_stats += batch_size
                         _LOGGER.warning('Insert failed: Queue index: %s Batch size: %s', list_index, batch_size)
-                    break
+                        break
 
             del readings_list[:batch_size]
 
