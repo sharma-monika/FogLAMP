@@ -12,6 +12,7 @@ __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"
 __license__ = "Apache 2.0"
 __version__ = "${VERSION}"
 
+import asyncio
 import aiohttp
 import http.client
 import ujson as json
@@ -683,18 +684,29 @@ class StorageClientAsync(AbstractStorage):
             raise TypeError("Provided data to update must be a valid JSON")
 
         put_url = '/storage/table/{tbl_name}'.format(tbl_name=tbl_name)
-
-        try:
-            url = 'http://' + self.base_url + put_url
-            async with self._session.put(url, data=data) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.info("PUT %s, with payload: %s", put_url, data)
-                    _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        max_attempts = 5
+        while True:
+            try:
+                url = 'http://' + self.base_url + put_url
+                async with self._session.put(url, data=data) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.info("PUT %s, with payload: %s", put_url, data)
+                        _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                attempt_count += 1
+                if attempt_count >= max_attempts:
+                    raise Exception(str(ex))
+                    _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                    break
+                await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
+                break
 
         return jdoc
 

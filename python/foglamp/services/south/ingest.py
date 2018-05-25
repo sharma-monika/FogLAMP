@@ -13,7 +13,7 @@ import uuid
 from typing import List, Union
 import ujson as json
 from foglamp.common import logger
-from foglamp.common.statistics import Statistics
+from foglamp.common import statistics_async
 from foglamp.common.storage_client.storage_client import ReadingsStorageClient, ReadingsStorageClientAsync, StorageClient, StorageClientAsync
 from foglamp.common.storage_client.exceptions import StorageServerError
 
@@ -428,7 +428,7 @@ class Ingest(object):
         """Periodically commits collected readings statistics"""
         _LOGGER.info('South statistics writer started')
 
-        stats = Statistics(cls.storage)
+        stats = await statistics_async.create_statistics(cls.storage_async)
 
         # Register static statistics
         await stats.register('READINGS', 'The number of readings received by FogLAMP since startup')
@@ -455,7 +455,7 @@ class Ingest(object):
             cls._readings_stats = 0
 
             try:
-                await stats.update('READINGS', readings)
+                asyncio.ensure_future(stats.update('READINGS', readings))
             except Exception as ex:
                 cls._readings_stats += readings
                 _LOGGER.exception('An error occurred while writing readings statistics, %s', str(ex))
@@ -464,7 +464,7 @@ class Ingest(object):
             cls._discarded_readings_stats = 0
 
             try:
-                await stats.update('DISCARDED', readings)
+                asyncio.ensure_future(stats.update      ('DISCARDED', readings))
             except Exception as ex:
                 cls._discarded_readings_stats += readings
                 _LOGGER.exception('An error occurred while writing discarded statistics, Error: %s', str(ex))
@@ -474,7 +474,7 @@ class Ingest(object):
                 description = 'The number of readings received by FogLAMP since startup for sensor {}'.format(key)
                 await stats.register(key, description)
             try:
-                await stats.add_update(cls._sensor_stats)
+                asyncio.ensure_future(stats.add_update(cls._sensor_stats))
                 cls._sensor_stats = {}
             except Exception as ex:
                 _LOGGER.exception('An error occurred while writing sensor statistics, Error: %s', str(ex))
