@@ -649,12 +649,12 @@ class StorageClientAsync(AbstractStorage):
                         _LOGGER.info("POST %s, with payload: %s", post_url, data)
                         _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in insert into table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -703,7 +703,8 @@ class StorageClientAsync(AbstractStorage):
                     if status_code != 200:
                         _LOGGER.info("PUT %s, with payload: %s", put_url, data)
                         _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                        break
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
@@ -752,12 +753,12 @@ class StorageClientAsync(AbstractStorage):
                         _LOGGER.info("DELETE %s, with payload: %s", del_url, condition if condition else '')
                         _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in delete from table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -795,12 +796,12 @@ class StorageClientAsync(AbstractStorage):
                         _LOGGER.info("GET %s", get_url)
                         _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in query from table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -846,12 +847,12 @@ class StorageClientAsync(AbstractStorage):
                         _LOGGER.info("PUT %s, with query payload: %s", put_url, query_payload)
                         _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in query table with payload. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -912,12 +913,12 @@ class ReadingsStorageClientAsync(StorageClientAsync):
                         _LOGGER.error("POST url %s with payload: %s, Error code: %d, reason: %s, details: %s",
                                       '/storage/reading', readings, resp.status, resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in append readings table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -960,12 +961,12 @@ class ReadingsStorageClientAsync(StorageClientAsync):
                         _LOGGER.error("GET url: %s, Error code: %d, reason: %s, details: %s", url, resp.status,
                                       resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in fetch readings table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -1008,12 +1009,12 @@ class ReadingsStorageClientAsync(StorageClientAsync):
                         _LOGGER.error("PUT url %s with query payload: %s, Error code: %d, reason: %s, details: %s",
                                       '/storage/reading/query', query_payload, resp.status, resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in query readings table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
@@ -1079,12 +1080,12 @@ class ReadingsStorageClientAsync(StorageClientAsync):
                         _LOGGER.error("PUT url %s, Error code: %d, reason: %s, details: %s", put_url, resp.status,
                                       resp.reason, jdoc)
                         raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    break
+                break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
                     # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
                     attempt_count += 1
                     if attempt_count >= MAX_ATTEMPTS:
-                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        _LOGGER.error("Error in purge readings table. Attemp count #%s", attempt_count)
                         raise Exception(str(ex))
                     await asyncio.sleep(.5)
             except Exception as ex:
