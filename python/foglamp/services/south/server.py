@@ -6,7 +6,7 @@
 
 """FogLAMP South Microservice"""
 
-import json
+import ujson as json
 import asyncio
 from foglamp.services.south import exceptions
 from foglamp.common import logger

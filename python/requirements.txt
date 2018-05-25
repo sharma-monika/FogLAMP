@@ -18,3 +18,7 @@ pexpect==4.0.1
 
 # Transformation of data, Apply JqFilter
 pyjq==2.1.0
+
+# Below required for performance testing and comparison
+ujson==1.35
+uvloop==0.9.1
