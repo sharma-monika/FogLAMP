@@ -384,7 +384,7 @@ class Ingest(object):
                     payload = dict()
                     payload['readings'] = readings_list
                     try:
-                        asyncio.ensure_future(cls.readings_storage_async.append(json.dumps(payload)), loop=loop)
+                        await cls.readings_storage_async.append(json.dumps(payload))
                         batch_size = len(readings_list)
                         cls._readings_stats += batch_size
                         # _LOGGER.debug("Inserted %s records", batch_size)
