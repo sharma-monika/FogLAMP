@@ -24,7 +24,7 @@ from foglamp.common.storage_client.exceptions import *
 from foglamp.common.storage_client.utils import Utils
 
 _LOGGER = logger.setup(__name__)
-
+MAX_ATTEMPTS = 5
 
 class AbstractStorage(ABC):
     """ abstract class for storage client """
@@ -638,18 +638,27 @@ class StorageClientAsync(AbstractStorage):
             raise TypeError("Provided data to insert must be a valid JSON")
 
         post_url = '/storage/table/{tbl_name}'.format(tbl_name=tbl_name)
-
-        try:
-            url = 'http://' + self.base_url + post_url
-            async with self._session.post(url, data=data) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.info("POST %s, with payload: %s", post_url, data)
-                    _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self.base_url + post_url
+                async with self._session.post(url, data=data) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.info("POST %s, with payload: %s", post_url, data)
+                        _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                    raise Exception(str(ex))
 
         return jdoc
 
@@ -685,7 +694,6 @@ class StorageClientAsync(AbstractStorage):
 
         put_url = '/storage/table/{tbl_name}'.format(tbl_name=tbl_name)
         attempt_count = 1
-        max_attempts = 5
         while True:
             try:
                 url = 'http://' + self.base_url + put_url
@@ -695,18 +703,16 @@ class StorageClientAsync(AbstractStorage):
                     if status_code != 200:
                         _LOGGER.info("PUT %s, with payload: %s", put_url, data)
                         _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                        break
             except aiohttp.client_exceptions.ServerDisconnectedError as ex:
-                # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
-                attempt_count += 1
-                if attempt_count >= max_attempts:
-                    raise Exception(str(ex))
-                    _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
-                    break
-                await asyncio.sleep(.5)
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
             except Exception as ex:
                 raise Exception(str(ex))
-                break
 
         return jdoc
 
@@ -735,17 +741,27 @@ class StorageClientAsync(AbstractStorage):
         if condition and (not Utils.is_json(condition)):
             raise TypeError("condition payload must be a valid JSON")
 
-        try:
-            url = 'http://' + self.base_url + del_url
-            async with self._session.delete(url, data=condition) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.info("DELETE %s, with payload: %s", del_url, condition if condition else '')
-                    _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self.base_url + del_url
+                async with self._session.delete(url, data=condition) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.info("DELETE %s, with payload: %s", del_url, condition if condition else '')
+                        _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         return jdoc
 
@@ -768,17 +784,27 @@ class StorageClientAsync(AbstractStorage):
         if query:  # else SELECT * FROM <tbl_name>
             get_url += '?{}'.format(query)
 
-        try:
-            url = 'http://' + self.base_url + get_url
-            async with self._session.get(url) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.info("GET %s", get_url)
-                    _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self.base_url + get_url
+                async with self._session.get(url) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.info("GET %s", get_url)
+                        _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         return jdoc
 
@@ -809,17 +835,27 @@ class StorageClientAsync(AbstractStorage):
 
         put_url = '/storage/table/{tbl_name}/query'.format(tbl_name=tbl_name)
 
-        try:
-            url = 'http://' + self.base_url + put_url
-            async with self._session.put(url, data=query_payload) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.info("PUT %s, with query payload: %s", put_url, query_payload)
-                    _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self.base_url + put_url
+                async with self._session.put(url, data=query_payload) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.info("PUT %s, with query payload: %s", put_url, query_payload)
+                        _LOGGER.error("Error code: %d, reason: %s, details: %s", resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         return jdoc
 
@@ -865,17 +901,27 @@ class ReadingsStorageClientAsync(StorageClientAsync):
         if not Utils.is_json(readings):
             raise TypeError("Readings payload must be a valid JSON")
 
-        try:
-            url = 'http://' + self._base_url + '/storage/reading'
-            async with self._session.post(url, data=readings) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.error("POST url %s with payload: %s, Error code: %d, reason: %s, details: %s",
-                                  '/storage/reading', readings, resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self._base_url + '/storage/reading'
+                async with self._session.post(url, data=readings) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.error("POST url %s with payload: %s, Error code: %d, reason: %s, details: %s",
+                                      '/storage/reading', readings, resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         _LOGGER.debug("Inserted %s records", jdoc['readings_added'])
         return jdoc
@@ -902,19 +948,28 @@ class ReadingsStorageClientAsync(StorageClientAsync):
         except ValueError:
             raise
 
-        try:
-            get_url = '/storage/reading?id={}&count={}'.format(reading_id, count)
-            url = 'http://' + self._base_url + get_url
-            async with self._session.get(url) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.error("GET url: %s, Error code: %d, reason: %s, details: %s", url, resp.status,
-                                  resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    # _LOGGER.debug("Inserted %s records", jdoc['readings_added'])
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                get_url = '/storage/reading?id={}&count={}'.format(reading_id, count)
+                url = 'http://' + self._base_url + get_url
+                async with self._session.get(url) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.error("GET url: %s, Error code: %d, reason: %s, details: %s", url, resp.status,
+                                      resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         return jdoc
 
@@ -942,18 +997,27 @@ class ReadingsStorageClientAsync(StorageClientAsync):
         if not Utils.is_json(query_payload):
             raise TypeError("Query payload must be a valid JSON")
 
-        try:
-            url = 'http://' + self._base_url + '/storage/reading/query'
-            async with self._session.put(url, data=query_payload) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.error("PUT url %s with query payload: %s, Error code: %d, reason: %s, details: %s",
-                                  '/storage/reading/query', query_payload, resp.status, resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    # _LOGGER.debug("Inserted %s records", jdoc['readings_added'])
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self._base_url + '/storage/reading/query'
+                async with self._session.put(url, data=query_payload) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.error("PUT url %s with query payload: %s, Error code: %d, reason: %s, details: %s",
+                                      '/storage/reading/query', query_payload, resp.status, resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         return jdoc
 
@@ -1004,17 +1068,26 @@ class ReadingsStorageClientAsync(StorageClientAsync):
         if flag:
             put_url += "&flags={}".format(flag.lower())
 
-        try:
-            url = 'http://' + self._base_url + put_url
-            async with self._session.put(url, data=None) as resp:
-                status_code = resp.status
-                jdoc = await resp.json()
-                if status_code != 200:
-                    _LOGGER.error("PUT url %s, Error code: %d, reason: %s, details: %s", put_url, resp.status,
-                                  resp.reason, jdoc)
-                    raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
-                    # _LOGGER.debug("Inserted %s records", jdoc['readings_added'])
-        except Exception as ex:
-            raise Exception(str(ex))
+        attempt_count = 1
+        while True:
+            try:
+                url = 'http://' + self._base_url + put_url
+                async with self._session.put(url, data=None) as resp:
+                    status_code = resp.status
+                    jdoc = await resp.json()
+                    if status_code != 200:
+                        _LOGGER.error("PUT url %s, Error code: %d, reason: %s, details: %s", put_url, resp.status,
+                                      resp.reason, jdoc)
+                        raise StorageServerError(code=resp.status, reason=resp.reason, error=jdoc)
+                    break
+            except aiohttp.client_exceptions.ServerDisconnectedError as ex:
+                    # This is not exactly an error but happens intermittently with aiohttp ver < 3.0
+                    attempt_count += 1
+                    if attempt_count >= MAX_ATTEMPTS:
+                        _LOGGER.error("Error in update table. Attemp count #%s", attempt_count)
+                        raise Exception(str(ex))
+                    await asyncio.sleep(.5)
+            except Exception as ex:
+                raise Exception(str(ex))
 
         return jdoc
