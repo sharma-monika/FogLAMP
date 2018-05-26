@@ -99,13 +99,13 @@ class Ingest(object):
     _write_statistics_frequency_seconds = 5
     """The number of seconds to wait before writing readings-related statistics to storage"""
 
-    _readings_buffer_size = 106496
+    _readings_buffer_size = 262144
     """Maximum number of readings to buffer in memory"""
 
-    _max_concurrent_readings_inserts = 13
+    _max_concurrent_readings_inserts = 4
     """Maximum number of concurrent processes that send batches of readings to storage"""
 
-    _readings_insert_batch_size = 8192
+    _readings_insert_batch_size = 65536
     """Maximum number of readings in a batch of inserts in terms of power of 2"""
 
     _readings_insert_batch_timeout_seconds = 1
@@ -319,20 +319,16 @@ class Ingest(object):
                 waiter = asyncio.ensure_future(min_readings_reached.wait())
                 cls._insert_readings_wait_tasks[list_index] = waiter
 
-                # _LOGGER.debug('Waiting for entire batch: Queue index: %s Size: %s',
-                #               list_index, len(list))
+                # _LOGGER.debug('Waiting for entire batch: Queue index: %s Size: %s', list_index, len(readings_list))
 
                 try:
                     await asyncio.wait_for(waiter, cls._readings_insert_batch_timeout_seconds)
-                    # _LOGGER.debug('Released: Queue index: %s Size: %s',
-                    #               list_index, len(list))
+                    # _LOGGER.debug('Released: Queue index: %s Size: %s', list_index, len(readings_list))
                 except asyncio.CancelledError:
-                    # _LOGGER.debug('Cancelled: Queue index: %s Size: %s',
-                    #               list_index, len(list))
+                    # _LOGGER.debug('Cancelled: Queue index: %s Size: %s', list_index, len(readings_list))
                     break
                 except asyncio.TimeoutError:
-                    # _LOGGER.debug('Timed out: Queue index: %s Size: %s',
-                    #               list_index, len(list))
+                    # _LOGGER.debug('Timed out: Queue index: %s Size: %s', list_index, len(readings_list))
                     break
                 finally:
                     cls._insert_readings_wait_tasks[list_index] = None
@@ -354,13 +350,10 @@ class Ingest(object):
                         cls._max_readings_insert_batch_connection_idle_seconds)
                 except asyncio.CancelledError:
                     # Don't assume the list is empty
-
-                    # _LOGGER.debug('Cancelled: Queue index: %s Size: %s',
-                    #               list_index, len(list))
+                    # _LOGGER.debug('Cancelled: Queue index: %s Size: %s', list_index, len(readings_list))
                     continue
                 except asyncio.TimeoutError:
-                    # _LOGGER.debug('Closing idle connection: Queue index: %s',
-                    #               list_index)
+                    # _LOGGER.debug('Closing idle connection: Queue index: %s', list_index)
                     continue
                 finally:
                     cls._insert_readings_wait_tasks[list_index] = None
@@ -368,24 +361,21 @@ class Ingest(object):
             # If batch size still not reached but another list has inserted
             # recently, wait some more
             if (not cls._stop) and (len(readings_list) < cls._readings_insert_batch_size) and ((
-                    time.time() - cls._last_insert_time) < cls._readings_insert_batch_timeout_seconds):
+                time.time() - cls._last_insert_time) < cls._readings_insert_batch_timeout_seconds):
                 continue
 
             attempt = 0
             cls._last_insert_time = time.time()
 
-            loop = asyncio.get_event_loop()
-
             # Perform insert. Retry when fails.
             while True:
-                # _LOGGER.debug('Begin insert: Queue index: %s Batch size: %s', list_index, len(readings_list))
-
                 try:
                     payload = dict()
                     payload['readings'] = readings_list
+                    batch_size = len(payload['readings'])
+                    # _LOGGER.debug('Begin insert: Queue index: %s Batch size: %s', list_index, batch_size)
                     try:
                         await cls.readings_storage_async.append(json.dumps(payload))
-                        batch_size = len(readings_list)
                         cls._readings_stats += batch_size
                         # _LOGGER.debug("Inserted %s records", batch_size)
                     except StorageServerError as ex:
@@ -400,7 +390,6 @@ class Ingest(object):
                             _LOGGER.error("%s, %s", err_response["source"], err_response["message"])
                             batch_size = len(readings_list)
                             cls._discarded_readings_stats += batch_size
-
                     # _LOGGER.debug('End insert: Queue index: %s Batch size: %s', list_index, batch_size)
                     break
                 except Exception as ex:
