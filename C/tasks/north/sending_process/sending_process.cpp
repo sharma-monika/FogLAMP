@@ -10,6 +10,11 @@
 
 #include <sending.h>
 #include <condition_variable>
+#include <reading_set.h>
+#include <plugin_manager.h>
+#include <plugin_api.h>
+#include <plugin.h>
+
 /**
  * The sending process is run according to a schedule in order to send reading data
  * to the historian, e.g. the PI system.
@@ -26,6 +31,16 @@ using namespace std;
 // Buffer max elements
 #define DATA_BUFFER_ELMS 10
 
+// Thread sleep (milliseconds) when no data from storage layer
+#define TASK_FETCH_SLEEP 1000
+
+// historian plugin to load
+#define PLUGIN_NAME "omf"
+
+// Sendinf process configuration
+static const string sendingProcessConfiguration = "\"plugin\" : { \"type\" : \"string\", \"value\" : \"omf\", "
+							"\"default\" : \"omf\", \"description\" : \"Python module name of the plugin to load\" }" ;
+
 // Mutex for m_buffer access
 mutex      readMutex;
 // Mutex for thread idle time
@@ -38,14 +53,31 @@ static void loadDataThread(SendingProcess *loadData);
 // Send data from historian
 static void sendDataThread(SendingProcess *sendData);
 
-
-
 int main(int argc, char** argv)
 {
+	string pluginName = PLUGIN_NAME;
+
 	try
 	{
 		// Instantiate SendingProcess class
 		SendingProcess sendigProcess(argc, argv);
+
+		if (!sendigProcess.loadPlugin(pluginName))
+		{
+			Logger::getLogger()->fatal("Failed to load north plugin '%s'.", pluginName.c_str());
+			exit(2);
+		}
+
+		// Build JSON merged configuration (sendingProcess + pluginConfig
+		string mergedConfiguration("{ ");
+		// Get plugin default config
+		mergedConfiguration.append(sendigProcess.m_plugin->config());
+		mergedConfiguration += ", ";
+		mergedConfiguration.append(sendingProcessConfiguration);
+		mergedConfiguration += " }";
+
+		// Init plugin with merged configuration
+		sendigProcess.m_plugin->init(mergedConfiguration);
 
 		// Launch the load thread
 		sendigProcess.m_thread_load = new thread(loadDataThread, &sendigProcess);
@@ -54,7 +86,7 @@ int main(int argc, char** argv)
 
 		// Check running time && handle signals
 		// Simulation with sleep
-		sleep(120);
+		sleep(40);
 
 		// End processing
 		sendigProcess.stopRunning();
@@ -62,6 +94,9 @@ int main(int argc, char** argv)
 		// threads execution has completed.
 		sendigProcess.m_thread_load->join();
 		sendigProcess.m_thread_send->join();
+
+		// Cleanup plugin resources
+		sendigProcess.m_plugin->shutdown();
 	}
 	catch (const std::exception & e)
 	{
@@ -86,18 +121,15 @@ static void loadDataThread(SendingProcess *loadData)
 
         while (loadData->isRunning())
         {
-                int canLoad;
-
                 if (readIdx >= DATA_BUFFER_ELMS)
                 {
                         readIdx = 0;
-                        continue;
                 }
 
-		// Check whether m_buffer[readIdx] is empty
+		// Check whether m_buffer[readIdx] is NULL
 		// Access is protected by a mutex.
                 readMutex.lock();
-                canLoad = loadData->m_buffer[readIdx].empty();
+                bool canLoad = loadData->m_buffer[readIdx].empty();
                 readMutex.unlock();
 
                 if (!canLoad)
@@ -115,32 +147,59 @@ static void loadDataThread(SendingProcess *loadData)
                 }
                 else
                 {
-                        Logger::getLogger()->info("-- loadDataThread: (stream id %d), readIdx %u. Loading data ...",
+                        /*
+			Logger::getLogger()->info("-- loadDataThread: (stream id %d), readIdx %u. Loading data ...",
                                                   loadData->getStreamId(),
                                                   readIdx);
+			*/
 
                         // Load data & transform data: simulating via sleep
-                        sleep(4);
+			ReadingSet* readings = NULL;
+			try
+			{
+				readings = loadData->getStorageClient()->readingFetch(0, 10);
+				usleep(2000);
+			}
+			catch (ReadingSetException* e)
+			{
+				Logger::getLogger()->error("SendingProcess loadData(): ReadingSet Exception '%s'", e->what());
+			}
+			catch (std::exception& e)
+			{
+				Logger::getLogger()->error("SendingProcess loadData(): Generic Exception: '%s'", e.what());
+			}
 
-			// Add data to m_buffer[readIdx]
-			// Access is protected by a mutex
-                        readMutex.lock();
+			// Add available data to m_buffer[readIdx]
+			if (readings != NULL && readings->getCount())
+			{		
+				// buffer Access is protected by a mutex
+                	        readMutex.lock();
 
-                        loadData->m_buffer[readIdx] = "Data Slot ";
-                        loadData->m_buffer[readIdx] += to_string(readIdx);
+                        	loadData->m_buffer[readIdx] = readings->getAllReadings();
+                        	Logger::getLogger()->info("-- loadDataThread: (stream id %d), readIdx %u. Loading done, data Buffer SET with %d readings",
+							  loadData->getStreamId(),
+							  readIdx, loadData->m_buffer[readIdx].size());
+		
+                        	readMutex.unlock();
 
-                        readMutex.unlock();
+                        	readIdx++;
 
-                        Logger::getLogger()->info("-- loadDataThread: (stream id %d), readIdx %u. Loading done, data Buffer SET",
-                                                  loadData->getStreamId(),
-                                                  readIdx);
-                        readIdx++;
-
-			// Unlock the sendData thread
-			unique_lock<mutex> lock(waitMutex);
-			cond_var.notify_one();
+				// Unlock the sendData thread
+				unique_lock<mutex> lock(waitMutex);
+				cond_var.notify_one();
+			}
+			else
+			{
+				// Error or no data read: just wait
+				this_thread::sleep_for(chrono::milliseconds(TASK_FETCH_SLEEP));
+			}
                 }
         }
+	/**
+	 * The loop is over: unlock the sendData thread
+	 */
+	unique_lock<mutex> lock(waitMutex);
+	cond_var.notify_one();
 }
 
 /**
@@ -154,18 +213,15 @@ static void sendDataThread(SendingProcess *sendData)
 
         while (sendData->isRunning())
         {
-                int canSend;
-
                 if (sendIdx >= DATA_BUFFER_ELMS)
                 {
                         sendIdx = 0;
-                        continue;
                 }
 
-		// Check whether m_buffer[sendIdx] is empty
+		// Check whether m_buffer[sendIdx] is NULL
 		// Access is protected by a mutex.
                 readMutex.lock();
-                canSend = sendData->m_buffer[sendIdx].empty();
+                bool canSend = sendData->m_buffer[sendIdx].empty();
                 readMutex.unlock();
 
                 if (canSend)
@@ -183,32 +239,46 @@ static void sendDataThread(SendingProcess *sendData)
                 }
                 else
                 {
-                        Logger::getLogger()->info("++ sendDataThread: " \
-                                                  "(stream id %d), sendIdx %u. Sending data ...",
-                                                  sendData->getStreamId(),
-                                                  sendIdx);
+			// Send buffer content (vector<Readings *>) to historian server
+			uint32_t sentReadings = sendData->m_plugin->send(sendData->m_buffer[sendIdx]);
 
-                        // Send Data: simulating via sleep
-                        sleep(15);
+			if (sentReadings)
+			{
+				// Emptying data in m_buffer[sendIdx]
+				// Access is protected by a mutex
+        	                readMutex.lock();
+                	        sendData->m_buffer[sendIdx].clear();
+                        	readMutex.unlock();
 
-			// Emptying data in m_buffer[sendIdx]
-			// Access is protected by a mutex
-                        readMutex.lock();
+				Logger::getLogger()->info("++ sendDataThread: " \
+							  "(stream id %d), sendIdx %u. Sending done. Data Buffer SET to empty",
+							  sendData->getStreamId(),
+							  sendIdx);
 
-                        sendData->m_buffer[sendIdx] = "";
+				sendIdx++;
 
-                        readMutex.unlock();
+				// Unlock the loadData thread
+				unique_lock<mutex> lock(waitMutex);
+				cond_var.notify_one();
+			}
+			else
+			{
+				Logger::getLogger()->error("++ sendDataThread: Error while sending" \
+							   "(stream id %d), sendIdx %u. N. (%d readings)",
+							   sendData->getStreamId(),
+							   sendIdx,
+							   sendData->m_buffer[sendIdx].size());
 
-                        Logger::getLogger()->info("++ sendDataThread: " \
-                                                  "(stream id %d), sendIdx %u. Sending done. Data Buffer SET to empty",
-                                                  sendData->getStreamId(),
-                                                  sendIdx);
+				// Error: just wait & continue
+				this_thread::sleep_for(chrono::milliseconds(TASK_FETCH_SLEEP));
+			}
 
-                        sendIdx++;
-
-			// Unlock the loadData thread
-			unique_lock<mutex> lock(waitMutex);
-			cond_var.notify_one();
                 }
         }
+
+	/**
+	 * The loop is over: unlock the loadData thread
+	 */
+	unique_lock<mutex> lock(waitMutex);
+	cond_var.notify_one();
 }

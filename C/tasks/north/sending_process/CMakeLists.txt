@@ -6,7 +6,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall -Wextra -Wsign-conversi
 set(DLLIB -ldl)
 set(UUIDLIB -luuid)
 
-include_directories(. include ../../../thirdparty/Simple-Web-Server ../../../thirdparty/rapidjson/include  ../../../common/include ../../../services/common/include)
+include_directories(. include ../../../thirdparty/Simple-Web-Server ../../../thirdparty/rapidjson/include  ../../../common/include ../../../services/common/include ../../../plugins/common/include)
 
 find_package(Threads REQUIRED)
 
@@ -28,12 +28,14 @@ endif()
 file(GLOB sending_process_src "*.cpp")
 file(GLOB services_src "../../../services/common/*.cpp")
 file(GLOB common_src "../../../common/*.cpp")
+file(GLOB plugin_common_src "../../../plugins/common/*.cpp")
 
-add_executable(sending_process ${sending_process_src} ${common_src} ${services_src})
+add_executable(sending_process ${sending_process_src} ${common_src} ${services_src} ${plugin_common_src})
 target_link_libraries(sending_process ${Boost_LIBRARIES})
 target_link_libraries(sending_process ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(sending_process ${DLLIB})
 target_link_libraries(sending_process ${UUIDLIB})
+target_link_libraries(sending_process -lssl -lcrypto)
 
 install(TARGETS sending_process RUNTIME DESTINATION foglamp/tasks)
 

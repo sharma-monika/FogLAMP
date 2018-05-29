@@ -40,6 +40,7 @@ SendingProcess::~SendingProcess()
 {
 	delete m_thread_load;
 	delete m_thread_send;
+	delete m_plugin;
 }
 
 // Constructor
@@ -53,6 +54,9 @@ SendingProcess::SendingProcess(int argc, char** argv) : FogLampProcess(argc, arg
 
 	// Mark running state
 	m_running = true;
+
+	// NorthPlugin
+	m_plugin = NULL;
 
 	Logger::getLogger()->info("SendingProcess class init with stream id (%d), buffer elms (%d)",
 				  m_stream_id,
@@ -75,4 +79,32 @@ bool SendingProcess::isRunning() const
 void SendingProcess::stopRunning()
 {
 	m_running = false;
+}
+
+/**
+ * Load the Historian specific 'transform & send data' plugin
+ *
+ * @param    pluginName    The plugin to load
+ * @return   true if loded, false otherwise 
+ */
+bool SendingProcess::loadPlugin(string& pluginName)
+{
+        PluginManager *manager = PluginManager::getInstance();
+
+        if (pluginName.empty())
+        {
+                Logger::getLogger()->error("Unable to fetch north plugin '%s' from configuration.", pluginName);
+                return false;
+        }
+        Logger::getLogger()->info("Load south plugin '%s'.", pluginName.c_str());
+
+        PLUGIN_HANDLE handle;
+
+        if ((handle = manager->loadPlugin(pluginName, PLUGIN_TYPE_NORTH)) != NULL)
+        {
+                Logger::getLogger()->info("Loaded south plugin '%s'.", pluginName.c_str());
+                m_plugin = new NorthPlugin(handle);
+                return true;
+        }
+        return false;
 }
