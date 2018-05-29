@@ -13,6 +13,9 @@
 
 #include <process.h>
 #include <thread>
+#include <north_plugin.h>
+#include <reading.h>
+
 
 // SendingProcess class
 class SendingProcess : public FogLampProcess
@@ -24,15 +27,17 @@ class SendingProcess : public FogLampProcess
 		// Destructor
 		~SendingProcess();
 
-	public:
 		int getStreamId() const;
 		bool isRunning() const;
 		void stopRunning();
+		bool loadPlugin(std::string& pluginName);
 
 	public:
-		std::vector<std::string> m_buffer;
-		std::thread		*m_thread_load;
-		std::thread		*m_thread_send;
+		std::vector<std::vector <Reading*> >	m_buffer;
+		std::thread				*m_thread_load;
+		std::thread				*m_thread_send;
+		NorthPlugin				*m_plugin;
+
 	private:
 		bool			m_running;
 		int 			m_stream_id;
