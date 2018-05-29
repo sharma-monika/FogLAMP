@@ -81,8 +81,13 @@ PLUGIN_HANDLE plugin_init(const std::string& configData)
 {
 	// TODO: handle the configData passed
 
-	// Allocate the HTTPS handler for "Hostname : port"
-	connector_info.sender = new SimpleHttps("127.0.0.1:443");
+	/**
+	 * Allocate the HTTPS handler for "Hostname : port"
+	 * connect_timeout and request_timeout.
+	 * Default is no timeout at all
+	 */
+	
+	connector_info.sender = new SimpleHttps("128.0.0.1:443", 5, 10);
 
 	string path("/ingress/messages");
 	string typeId("1534");

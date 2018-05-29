@@ -21,9 +21,11 @@ class SimpleHttp: public HttpSender
 {
 	public:
 		/**
-		 * Constructor:
+		 * Constructor: pass host:port & connect & request timeouts
 		 */
-		SimpleHttp(const std::string& host_port);
+		SimpleHttp(const std::string& host_port,
+				unsigned int connect_timeout = 0,
+				unsigned int request_timeout = 0);
 
 		// Destructor
 		~SimpleHttp();

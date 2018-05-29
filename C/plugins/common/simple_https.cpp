@@ -17,11 +17,17 @@ using namespace std;
 using HttpsClient = SimpleWeb::Client<SimpleWeb::HTTPS>;
 
 /**
- * Constructor
+ * Constructor: host:port, connect_timeout, request_timeout
  */
-SimpleHttps::SimpleHttps(const string& host_port) : HttpSender(), m_host_port(host_port)
+SimpleHttps::SimpleHttps(const string& host_port,
+                         unsigned int connect_timeout,
+                         unsigned int request_timeout) :
+			 HttpSender(), m_host_port(host_port)
 {
+	// Passing false to second parameter avoids certificate verification
 	m_sender = new HttpsClient(host_port, false);
+	m_sender->config.timeout = request_timeout;
+	m_sender->config.timeout_connect = connect_timeout;
 }
 
 /**

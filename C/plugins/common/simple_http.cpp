@@ -16,11 +16,16 @@ using namespace std;
 using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 
 /**
- * Constructor
+ * Constructor: host:port, connect_timeout, request_timeout
  */
-SimpleHttp::SimpleHttp(const string& host_port) : HttpSender(), m_host_port(host_port)
+SimpleHttp::SimpleHttp(const string& host_port,
+		       unsigned int connect_timeout,
+		       unsigned int request_timeout) :
+		       HttpSender(), m_host_port(host_port)
 {
 	m_sender = new HttpClient(host_port);
+	m_sender->config.timeout = request_timeout;
+	m_sender->config.timeout_connect = connect_timeout;
 }
 
 /**
