@@ -7,7 +7,7 @@
  *
  * Released under the Apache 2.0 Licence
  *
- * Author: Mark Riddoch
+ * Author: Mark Riddoch, Massimiliano Pinto
  */
 #include <string>
 #include <string.h>
@@ -28,18 +28,23 @@ class ReadingSet {
 		ReadingSet(const std::string& json);
 		~ReadingSet();
 
-		unsigned int			getCount() const { return m_count; };
+		unsigned long			getCount() const { return m_count; };
 		const Reading			*operator[] (const unsigned int idx) {
 							return m_readings[idx];
 						};
-		// Return a reference of m_readings
-		std::vector<Reading *>&		getAllReadings() {
-							return m_readings;
+		// Return the reference of readings data
+		const std::vector<Reading *>&	getAllReadings() {
+								return m_readings;
 						};
-	private:
-		unsigned int			m_count;
-		std::vector<Reading *>		m_readings;
 
+		// Return the reading id of the last  data element
+		unsigned long			getLastId() const { return m_last_id; };
+
+	private:
+		unsigned long			m_count;
+		std::vector<Reading *>		m_readings;
+		// Id of last Reading element
+		unsigned long			m_last_id;    // Id of the last Reading
 };
 
 /**
@@ -50,6 +55,9 @@ class ReadingSet {
 class JSONReading : public Reading {
 	public:
 		JSONReading(const rapidjson::Value& json);
+
+		// Return the reading id
+		unsigned long	getId() const { return m_id; };
 };
 
 class ReadingSetException : public std::exception
