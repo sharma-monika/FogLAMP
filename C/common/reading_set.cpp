@@ -65,10 +65,15 @@ ReadingSet::ReadingSet(const std::string& json)
 				throw new ReadingSetException("Expected array of rows in result set");
 			}
 		}
+		else
+		{
+			m_last_id = 0;
+		}
 	}
 	else
 	{
 		m_count = 0;
+		m_last_id = 0;
 	}
 }
 

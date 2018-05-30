@@ -90,6 +90,9 @@ int main(int argc, char** argv)
 
 		// End processing
 		sendingProcess.stop();
+
+		cerr << "Last ID sent: " << sendingProcess.getLastSentId() << endl;
+		cerr << "Readings Sent: " << sendingProcess.getSentReadings() << endl;
 	}
 	catch (const std::exception & e)
 	{
@@ -143,11 +146,15 @@ static void loadDataThread(SendingProcess *loadData)
                 }
                 else
                 {
-                        // Load data from storage client (id >= and 10 rows)
+                        // Load data from storage client (id >= lastId and 10 rows) 
 			ReadingSet* readings = NULL;
 			try
 			{
-				readings = loadData->getStorageClient()->readingFetch(0, 10);
+				// Read from storage all readings with id > last sent id
+				unsigned long lastReadId = loadData->getLastSentId() + 1;
+				// Load 10 readings at time
+				readings = loadData->getStorageClient()->readingFetch(lastReadId, 10);
+
 				// Delay for test
 				usleep(7000);
 			}
@@ -160,9 +167,14 @@ static void loadDataThread(SendingProcess *loadData)
 				Logger::getLogger()->error("SendingProcess loadData(): Generic Exception: '%s'", e.what());
 			}
 
-			// Add available data to m_buffer[readIdx]
+			// Data fetched from storage layer
 			if (readings != NULL && readings->getCount())
-			{		
+			{
+				// Update last fetched reading Id
+				loadData->setLastSentId(readings->getLastId());
+				Logger::getLogger()->info("-- loadDataThread: LastRead Reading ID = [%d]",
+							  loadData->getLastSentId());
+
 				/**
 				 * The buffer access is protected by a mutex
 				 */
@@ -177,10 +189,13 @@ static void loadDataThread(SendingProcess *loadData)
 				 */
 	                      	loadData->m_buffer.at(readIdx) = readings;
 
-                        	Logger::getLogger()->info("-- loadDataThread: (stream id %d), readIdx %u. Loading done, data Buffer SET with %d readings",
+                        	readMutex.unlock();
+
+                        	Logger::getLogger()->info("-- loadDataThread: (stream id %d), "
+							  "readIdx %u. Loading done, data Buffer SET "
+							  "with %d readings",
 							  loadData->getStreamId(),
 							  readIdx, readings->getCount());
-                        	readMutex.unlock();
 
                         	readIdx++;
 
@@ -243,26 +258,32 @@ static void sendDataThread(SendingProcess *sendData)
                 {
 			/**
 			 * Send the buffer content ( const vector<Readings *>& )
-			 * using m_plugin->send(data)
+			 * to historian server via m_plugin->send(data).
 			 * Readings data by getAllReadings() will be
 			 * transformed using historian protocol and then sent to destination.
 			 */
 
-			// Get Readings data reference
 			const vector<Reading *> &readingData = sendData->m_buffer.at(sendIdx)->getAllReadings();
-			// Process & Send the Readings
 			uint32_t sentReadings = sendData->m_plugin->send(readingData);
+
+			// Add delay for test
+			sleep(1);
 
 			if (sentReadings)
 			{
+				/** Sending done */
+
 				/**
-				 * Sending done, emptying data in m_buffer[sendIdx].
+				 * 1- emptying data in m_buffer[sendIdx].
 				 * The buffer access is protected by a mutex.
 				 */
 				readMutex.lock();
 
 				delete sendData->m_buffer.at(sendIdx);
 				sendData->m_buffer.at(sendIdx) = NULL;
+
+				/** 2- Update sent counter (memory only) */
+				sendData->updateSentReadings(sentReadings);
 
 				readMutex.unlock();
 

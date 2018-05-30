@@ -58,6 +58,10 @@ SendingProcess::SendingProcess(int argc, char** argv) : FogLampProcess(argc, arg
 	// NorthPlugin
 	m_plugin = NULL;
 
+	// Set vars & counters to 0
+	m_last_sent_id  = 0;
+	m_tot_sent = 0;
+
 	Logger::getLogger()->info("SendingProcess class init with stream id (%d), buffer elms (%d)",
 				  m_stream_id,
 				  DATA_BUFFER_ELMS);
