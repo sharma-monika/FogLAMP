@@ -33,9 +33,7 @@ class ReadingSet {
 							return m_readings[idx];
 						};
 		// Return the reference of readings data
-		const std::vector<Reading *>&	getAllReadings() {
-								return m_readings;
-						};
+		const std::vector<Reading *>&	getAllReadings() const { return m_readings; };
 
 		// Return the reading id of the last  data element
 		unsigned long			getLastId() const { return m_last_id; };
