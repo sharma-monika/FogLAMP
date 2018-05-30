@@ -32,6 +32,10 @@ class ReadingSet {
 		const Reading			*operator[] (const unsigned int idx) {
 							return m_readings[idx];
 						};
+		// Return a reference of m_readings
+		std::vector<Reading *>&		getAllReadings() {
+							return m_readings;
+						};
 	private:
 		unsigned int			m_count;
 		std::vector<Reading *>		m_readings;
