@@ -60,9 +60,9 @@ int main(int argc, char** argv)
 	try
 	{
 		// Instantiate SendingProcess class
-		SendingProcess sendigProcess(argc, argv);
+		SendingProcess sendingProcess(argc, argv);
 
-		if (!sendigProcess.loadPlugin(pluginName))
+		if (!sendingProcess.loadPlugin(pluginName))
 		{
 			Logger::getLogger()->fatal("Failed to load north plugin '%s'.", pluginName.c_str());
 			exit(2);
@@ -71,42 +71,25 @@ int main(int argc, char** argv)
 		// Build JSON merged configuration (sendingProcess + pluginConfig
 		string mergedConfiguration("{ ");
 		// Get plugin default config
-		mergedConfiguration.append(sendigProcess.m_plugin->config());
+		mergedConfiguration.append(sendingProcess.m_plugin->config());
 		mergedConfiguration += ", ";
 		mergedConfiguration.append(sendingProcessConfiguration);
 		mergedConfiguration += " }";
 
 		// Init plugin with merged configuration
-		sendigProcess.m_plugin->init(mergedConfiguration);
+		sendingProcess.m_plugin->init(mergedConfiguration);
 
 		// Launch the load thread
-		sendigProcess.m_thread_load = new thread(loadDataThread, &sendigProcess);
+		sendingProcess.m_thread_load = new thread(loadDataThread, &sendingProcess);
 		// Launch the send thread
-		sendigProcess.m_thread_send = new thread(sendDataThread, &sendigProcess);
+		sendingProcess.m_thread_send = new thread(sendDataThread, &sendingProcess);
 
 		// Check running time && handle signals
 		// Simulation with sleep
 		sleep(40);
 
-		// End processing (TODO add all following statements to SendingProcess::stop()
-		sendigProcess.stopRunning();
-
-		// threads execution has completed.
-		sendigProcess.m_thread_load->join();
-		sendigProcess.m_thread_send->join();
-
-		// Clean the buffers
-		for (unsigned int i = 0; i < DATA_BUFFER_ELMS; i++)
-		{
-			ReadingSet* data = sendigProcess.m_buffer[i];
-			if (data != NULL)
-			{
-				delete data;
-			}
-		}
-
-		// Cleanup plugin resources
-		sendigProcess.m_plugin->shutdown();
+		// End processing
+		sendingProcess.stop();
 	}
 	catch (const std::exception & e)
 	{
@@ -267,7 +250,7 @@ static void sendDataThread(SendingProcess *sendData)
 
 			// Get Readings data reference
 			const vector<Reading *> &readingData = sendData->m_buffer.at(sendIdx)->getAllReadings();
-			// Porcess & Send the Readings
+			// Process & Send the Readings
 			uint32_t sentReadings = sendData->m_plugin->send(readingData);
 
 			if (sentReadings)

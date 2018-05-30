@@ -55,7 +55,7 @@ class OMF
 				      bool skipSentDataTypes = true);
 
 		// Method with vector (by reference) of reading pointers
-		uint32_t sendToServer(const std::vector<Reading *> &readings,
+		uint32_t sendToServer(const std::vector<Reading *>& readings,
 				      bool skipSentDataTypes = true);
 
 		// Send a single reading (by reference)

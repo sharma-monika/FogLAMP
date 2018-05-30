@@ -31,9 +31,10 @@ class SendingProcess : public FogLampProcess
 		bool isRunning() const;
 		void stopRunning();
 		bool loadPlugin(std::string& pluginName);
+		void stop();
 
 	public:
-		std::vector<ReadingSet *>	m_buffer;
+		std::vector<ReadingSet* >	m_buffer;
 		std::thread			*m_thread_load;
 		std::thread			*m_thread_send;
 		NorthPlugin			*m_plugin;

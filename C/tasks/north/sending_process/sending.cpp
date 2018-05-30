@@ -108,3 +108,27 @@ bool SendingProcess::loadPlugin(string& pluginName)
         }
         return false;
 }
+
+// Stop running threads & cleanup used resources
+void SendingProcess::stop()
+{
+	// End of processing loop for threads
+	this->stopRunning();
+
+	// Threads execution has completed.
+	this->m_thread_load->join();
+        this->m_thread_send->join();
+
+	// Remove the data buffers
+	for (unsigned int i = 0; i < DATA_BUFFER_ELMS; i++)
+	{
+		ReadingSet* data = this->m_buffer[i];
+		if (data != NULL)
+		{
+			delete data;
+		}
+	}
+
+	// Cleanup the plugin resources
+	this->m_plugin->shutdown();
+}

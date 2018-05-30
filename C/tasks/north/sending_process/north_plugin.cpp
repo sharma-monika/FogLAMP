@@ -28,7 +28,7 @@ NorthPlugin::NorthPlugin(const PLUGIN_HANDLE handle) : Plugin(handle)
 	pluginShutdownPtr = (void (*)(const PLUGIN_HANDLE))
 				      manager->resolveSymbol(handle, "plugin_shutdown");
 
-	pluginSend = (uint32_t (*)(const PLUGIN_HANDLE, const vector<Reading *>& readings))
+	pluginSend = (uint32_t (*)(const PLUGIN_HANDLE, const vector<Reading* >& readings))
 				   manager->resolveSymbol(handle, "plugin_send");
 
 	pluginGetConfig = (const string& (*)())manager->resolveSymbol(handle, "plugin_config");
@@ -57,7 +57,7 @@ PLUGIN_HANDLE NorthPlugin::init(const string& config)
  * @param  readings    The readings data
  * @return             The readings sent or 0 in case of any error
  */
-uint32_t NorthPlugin::send(const vector<Reading *>& readings) const
+uint32_t NorthPlugin::send(const vector<Reading* >& readings) const
 {
 	return this->pluginSend(m_instance, readings);
 }
