@@ -7,7 +7,7 @@
 """ Storage layer python client
 """
 
-__author__ = "Praveen Garg"
+__author__ = "Praveen Garg, Amarendra K Sinha"
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"
 __license__ = "Apache 2.0"
 __version__ = "${VERSION}"

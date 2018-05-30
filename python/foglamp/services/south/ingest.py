@@ -17,7 +17,7 @@ from foglamp.common import statistics_async
 from foglamp.common.storage_client.storage_client import ReadingsStorageClient, ReadingsStorageClientAsync, StorageClient, StorageClientAsync
 from foglamp.common.storage_client.exceptions import StorageServerError
 
-__author__ = "Terris Linenbach"
+__author__ = "Terris Linenbach, Amarendra K Sinha"
 __copyright__ = "Copyright (c) 2017 OSIsoft, LLC"
 __license__ = "Apache 2.0"
 __version__ = "${VERSION}"
