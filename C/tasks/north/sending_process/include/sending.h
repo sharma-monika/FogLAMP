@@ -33,14 +33,14 @@ class SendingProcess : public FogLampProcess
 		bool loadPlugin(std::string& pluginName);
 
 	public:
-		std::vector<std::vector <Reading*> >	m_buffer;
-		std::thread				*m_thread_load;
-		std::thread				*m_thread_send;
-		NorthPlugin				*m_plugin;
+		std::vector<ReadingSet *>	m_buffer;
+		std::thread			*m_thread_load;
+		std::thread			*m_thread_send;
+		NorthPlugin			*m_plugin;
 
 	private:
-		bool			m_running;
-		int 			m_stream_id;
+		bool				m_running;
+		int 				m_stream_id;
 };
 
 #endif

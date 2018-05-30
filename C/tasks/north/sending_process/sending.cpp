@@ -49,8 +49,8 @@ SendingProcess::SendingProcess(int argc, char** argv) : FogLampProcess(argc, arg
 	// Get streamID from command line
 	m_stream_id = atoi(this->getArgValue("--stream-id=").c_str());
 
-	// Set buffer
-	m_buffer.resize(DATA_BUFFER_ELMS);
+	// Set buffer of ReadingSet with NULLs
+	m_buffer.resize(DATA_BUFFER_ELMS, NULL);
 
 	// Mark running state
 	m_running = true;

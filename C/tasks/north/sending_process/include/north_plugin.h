@@ -33,7 +33,7 @@ class NorthPlugin : public Plugin {
 
 		void			shutdown();
 		const std::string& 	config() const;
-		uint32_t		send(const std::vector<Reading* > readings) const;
+		uint32_t		send(const std::vector<Reading* >& readings) const;
 		PLUGIN_HANDLE		init(const std::string& config);
 
 	private:
@@ -41,7 +41,7 @@ class NorthPlugin : public Plugin {
 		void			(*pluginShutdownPtr)(const PLUGIN_HANDLE);
 		const std::string&	(*pluginGetConfig)();
 		uint32_t		(*pluginSend)(const PLUGIN_HANDLE,
-						      const std::vector<Reading* > readings);
+						      const std::vector<Reading* >& readings);
 		PLUGIN_HANDLE		(*pluginInit)(const std::string& config);
 
 	private:

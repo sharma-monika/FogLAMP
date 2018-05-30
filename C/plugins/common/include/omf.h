@@ -50,15 +50,15 @@ class OMF
 		 * Returns the number of processed readings.
 		 */
 
-		// Method with vector of readings
+		// Method with vector (by reference) of readings
 		uint32_t sendToServer(const std::vector<Reading>& readings,
 				      bool skipSentDataTypes = true);
 
-		// Method with vector of reading pointers
-		uint32_t sendToServer(const std::vector<Reading *> readings,
+		// Method with vector (by reference) of reading pointers
+		uint32_t sendToServer(const std::vector<Reading *> &readings,
 				      bool skipSentDataTypes = true);
 
-		// Send a single reading
+		// Send a single reading (by reference)
 		uint32_t sendToServer(const Reading& reading,
 				      bool skipSentDataTypes = true);
 

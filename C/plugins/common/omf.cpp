@@ -156,7 +156,7 @@ bool OMF::sendDataTypes(const Reading& row) const
  * @param skipSendDataTypes   Send datatypes only once (default is true)
  * @return                    != on success, 0 otherwise
  */
-uint32_t OMF::sendToServer(const vector<Reading *> readings,
+uint32_t OMF::sendToServer(const vector<Reading *> &readings,
 			   bool skipSentDataTypes)
 {
 	/*
