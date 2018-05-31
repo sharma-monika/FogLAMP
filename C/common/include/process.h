@@ -22,6 +22,8 @@ class FogLampProcess
 	public:
 		FogLampProcess(int argc, char** argv);
 		virtual ~FogLampProcess();
+		StorageClient*          getStorageClient() const;
+
 	protected:
 		std::string getArgValue(const std::string& name) const;
 
