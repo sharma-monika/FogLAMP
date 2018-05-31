@@ -41,6 +41,8 @@ class ReadingSet {
 
 	private:
 		unsigned long			m_count;
+		ReadingSet(const ReadingSet&);
+		ReadingSet&			operator=(ReadingSet const &);
 		std::vector<Reading *>		m_readings;
 		// Id of last Reading element
 		unsigned long			m_last_id;    // Id of the last Reading
