@@ -23,6 +23,7 @@ class FogLampProcess
 		FogLampProcess(int argc, char** argv);
 		virtual ~FogLampProcess();
 		StorageClient*          getStorageClient() const;
+		ManagementClient*	getManagementClient() const;
 
 	protected:
 		std::string getArgValue(const std::string& name) const;
