@@ -35,22 +35,25 @@ class SendingProcess : public FogLampProcess
 		void setLastSentId(unsigned long id) { m_last_sent_id = id; };
 		unsigned long getLastSentId() const { return m_last_sent_id; };
 		unsigned long getSentReadings() const { return m_tot_sent; };
-		unsigned long updateSentReadings(unsigned long num) {
-						 m_tot_sent += num;
-						 return m_tot_sent;
-				};
+		bool updateSentReadings(unsigned long num) {
+					m_tot_sent += num;
+					return m_tot_sent;
+		};
+		void	resetSentReadings() { m_tot_sent = 0; };
+		void	updateDatabaseCounters();
+		bool	getLastSentReadingId();
 
 	public:
-		std::vector<ReadingSet *>		m_buffer;
-		std::thread				*m_thread_load;
-		std::thread				*m_thread_send;
-		NorthPlugin				*m_plugin;
+		std::vector<ReadingSet *>	m_buffer;
+		std::thread			*m_thread_load;
+		std::thread			*m_thread_send;
+		NorthPlugin			*m_plugin;
 
 	private:
-		bool			m_running;
-		int 			m_stream_id;
-		unsigned long		m_last_sent_id;
-		unsigned long		m_tot_sent;
+		bool				m_running;
+		int 				m_stream_id;
+		unsigned long			m_last_sent_id;
+		unsigned long			m_tot_sent;
 };
 
 #endif

@@ -37,10 +37,12 @@ using namespace std;
 // historian plugin to load
 #define PLUGIN_NAME "omf"
 
+#define READINGS_FETCH_MAX 1000
+#define MAX_EXECUTION_TIME 60
+
 // Sendinf process configuration
 static const string sendingProcessConfiguration = "\"plugin\" : { \"type\" : \"string\", \"value\" : \"omf\", "
 							"\"default\" : \"omf\", \"description\" : \"Python module name of the plugin to load\" }" ;
-
 // Mutex for m_buffer access
 mutex      readMutex;
 // Mutex for thread idle time
@@ -79,6 +81,13 @@ int main(int argc, char** argv)
 		// Init plugin with merged configuration
 		sendingProcess.m_plugin->init(mergedConfiguration);
 
+                // Fetch last_object sent from foglamp.streams
+		if (!sendingProcess.getLastSentReadingId())
+		{
+			cerr << ">>>>>> Last object id for stream " << sendingProcess.getStreamId() << " NOT found, abort" << endl;
+                        exit(3);
+		}
+
 		// Launch the load thread
 		sendingProcess.m_thread_load = new thread(loadDataThread, &sendingProcess);
 		// Launch the send thread
@@ -86,13 +95,10 @@ int main(int argc, char** argv)
 
 		// Check running time && handle signals
 		// Simulation with sleep
-		sleep(40);
+		sleep(MAX_EXECUTION_TIME);
 
 		// End processing
 		sendingProcess.stop();
-
-		cerr << "Last ID sent: " << sendingProcess.getLastSentId() << endl;
-		cerr << "Readings Sent: " << sendingProcess.getSentReadings() << endl;
 	}
 	catch (const std::exception & e)
 	{
@@ -146,17 +152,24 @@ static void loadDataThread(SendingProcess *loadData)
                 }
                 else
                 {
-                        // Load data from storage client (id >= lastId and 10 rows) 
+                        // Load data from storage client (id >= lastId and READINGS_FETCH_MAX rows)
 			ReadingSet* readings = NULL;
 			try
 			{
 				// Read from storage all readings with id > last sent id
 				unsigned long lastReadId = loadData->getLastSentId() + 1;
-				// Load 10 readings at time
-				readings = loadData->getStorageClient()->readingFetch(lastReadId, 10);
 
-				// Delay for test
-				usleep(7000);
+				// Load READINGS_FETCH_MAX readings
+				using namespace std::chrono;
+
+				high_resolution_clock::time_point t1 = high_resolution_clock::now();
+
+				readings = loadData->getStorageClient()->readingFetch(lastReadId, READINGS_FETCH_MAX);
+
+				high_resolution_clock::time_point t2 = high_resolution_clock::now();
+
+				auto duration = duration_cast<microseconds>( t2 - t1 ).count();
+				cerr << "FetchReadings[" << readIdx << "] time in microseconds: " << duration << endl;
 			}
 			catch (ReadingSetException* e)
 			{
@@ -172,8 +185,9 @@ static void loadDataThread(SendingProcess *loadData)
 			{
 				// Update last fetched reading Id
 				loadData->setLastSentId(readings->getLastId());
-				Logger::getLogger()->info("-- loadDataThread: LastRead Reading ID = [%d]",
-							  loadData->getLastSentId());
+
+				Logger::getLogger()->info("-- loadDataThread: Read data, Id of last reading element is = [%d]/[%d]",
+							  readings->getLastId(), loadData->getLastSentId());
 
 				/**
 				 * The buffer access is protected by a mutex
@@ -210,6 +224,9 @@ static void loadDataThread(SendingProcess *loadData)
 			}
                 }
         }
+
+	cerr << "Last ID sent: " << loadData->getLastSentId() << endl;
+
 	/**
 	 * The loop is over: unlock the sendData thread
 	 */
@@ -224,14 +241,26 @@ static void loadDataThread(SendingProcess *loadData)
  */
 static void sendDataThread(SendingProcess *sendData)
 {
-        unsigned int    sendIdx = 0;
+	unsigned long totSent = 0;
+	unsigned int  sendIdx = 0;
 
         while (sendData->isRunning())
         {
                 if (sendIdx >= DATA_BUFFER_ELMS)
-                {
-                        sendIdx = 0;
-                }
+		{
+
+			// Update counters to Database
+			sendData->updateDatabaseCounters();
+
+			// numReadings sent so far
+			totSent += sendData->getSentReadings();
+
+			// Reset send index
+			sendIdx = 0;
+
+			// Reset current sent readings
+			sendData->resetSentReadings();	
+		}
 
 		/*
 		 * Check whether m_buffer[sendIdx] is NULL or contains ReadinSet data.
@@ -266,9 +295,6 @@ static void sendDataThread(SendingProcess *sendData)
 			const vector<Reading *> &readingData = sendData->m_buffer.at(sendIdx)->getAllReadings();
 			uint32_t sentReadings = sendData->m_plugin->send(readingData);
 
-			// Add delay for test
-			sleep(1);
-
 			if (sentReadings)
 			{
 				/** Sending done */
@@ -279,6 +305,7 @@ static void sendDataThread(SendingProcess *sendData)
 				 */
 				readMutex.lock();
 
+				// if persistent commment delete
 				delete sendData->m_buffer.at(sendIdx);
 				sendData->m_buffer.at(sendIdx) = NULL;
 
@@ -287,7 +314,7 @@ static void sendDataThread(SendingProcess *sendData)
 
 				readMutex.unlock();
 
-				Logger::getLogger()->info("++ sendDataThread: " \
+				Logger::getLogger()->info("++ sendDataThread: "
 							  "(stream id %d), sendIdx %u. Sending done. Data Buffer SET to empty",
 							  sendData->getStreamId(),
 							  sendIdx);
@@ -313,9 +340,102 @@ static void sendDataThread(SendingProcess *sendData)
                 }
         }
 
+	cerr << "Tot Readings Sent: " << totSent << endl;
+
 	/**
 	 * The loop is over: unlock the loadData thread
 	 */
 	unique_lock<mutex> lock(waitMutex);
 	cond_var.notify_one();
+}
+
+/**
+ * Update datbaase tables statistics and streams
+ * setting last_object id in streams
+ * and numReadings sent in statistics
+ */
+void SendingProcess::updateDatabaseCounters()
+{
+	// Update counters to Database
+
+	string streamId = to_string(this->getStreamId());
+
+	// Prepare WHERE destination_id = val
+	const Condition conditionStream(Equals);
+	Where wStreamId("destination_id",
+			conditionStream,
+			streamId);
+
+	// Prepare last_object = value
+	InsertValues lastId;
+	lastId.push_back(InsertValue("last_object",
+			 (long)this->getLastSentId()));
+
+	// Perform UPDATE foglamp.streams SET destination_id = x WHERE destination_id = y
+	this->getStorageClient()->updateTable("streams",
+					      lastId,
+					      wStreamId);
+
+	cerr << "Table foglamp.streams updated: 'last_object' = " << this->getLastSentId() << endl;
+
+	// Prepare "WHERE SENT_x = val
+	const Condition conditionStat(Equals);
+	Where wLastStat("key",
+			conditionStat,
+			string("SENT_" + streamId));
+
+	// Prepare value = value + inc
+	ExpressionValues updateValue;
+	updateValue.push_back(Expression("value",
+			      "+",
+			      (int)this->getSentReadings()));
+
+	// Perform UPDATE foglamp.statistics SET value = value + x WHERE key = 'y'
+	this->getStorageClient()->updateTable("statistics",
+					      updateValue,
+					      wLastStat);
+
+	cerr << "Table foglamp.statistics updated: value = value + " << this->getSentReadings() << endl;
+}
+
+/**
+ * Get last_object id sent for current stream_id
+ * Access foglam.streams table.
+ *
+ * @return true if last_object is found, false otherwise
+ */
+bool SendingProcess::getLastSentReadingId()
+{
+	// Fetch last_object sent from foglamp.streams
+
+	bool foundId = false;
+	const Condition conditionId(Equals);
+	string streamId = to_string(this->getStreamId());
+	Where* wStreamId = new Where("destination_id",
+				     conditionId,
+				     streamId);
+
+	// SELECT * FROM foglamp.streams WHERE destination_id = x
+	Query qLastId(wStreamId);
+
+	ResultSet* lastObjectId = this->getStorageClient()->queryTable("streams", qLastId);
+
+	if (lastObjectId != NULL && lastObjectId->rowCount())
+	{
+		// Get the first row only
+		ResultSet::RowIterator it = lastObjectId->firstRow();
+		// Access the element
+		ResultSet::Row* row = *it;
+		if (row)
+		{
+			// Get column value
+			ResultSet::ColumnValue* theVal = row->getColumn("last_object");
+			// Set found id
+			this->setLastSentId((unsigned long)theVal->getInteger());
+
+			foundId = true;
+		}
+	}
+
+	return foundId;
 }
