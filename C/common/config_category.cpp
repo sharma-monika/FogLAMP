@@ -10,6 +10,8 @@
 #include <config_category.h>
 #include <string>
 #include <rapidjson/document.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <rapidjson/writer.h>
 #include <sstream>
 #include <iostream>
 #include <time.h>
@@ -103,7 +105,7 @@ ConfigCategory::~ConfigCategory()
  */
 bool ConfigCategory::itemExists(const string& name) const
 {
-	for (int i = 0; i < m_items.size(); i++)
+	for (unsigned int i = 0; i < m_items.size(); i++)
 	{
 		if (name.compare(m_items[i]->m_name) == 0)
 		{
@@ -122,7 +124,7 @@ bool ConfigCategory::itemExists(const string& name) const
  */
 string ConfigCategory::getValue(const string& name) const
 {
-	for (int i = 0; i < m_items.size(); i++)
+	for (unsigned int i = 0; i < m_items.size(); i++)
 	{
 		if (name.compare(m_items[i]->m_name) == 0)
 		{
@@ -141,7 +143,7 @@ string ConfigCategory::getValue(const string& name) const
  */
 string ConfigCategory::getType(const string& name) const
 {
-	for (int i = 0; i < m_items.size(); i++)
+	for (unsigned int i = 0; i < m_items.size(); i++)
 	{
 		if (name.compare(m_items[i]->m_name) == 0)
 		{
@@ -160,7 +162,7 @@ string ConfigCategory::getType(const string& name) const
  */
 string ConfigCategory::getDescription(const string& name) const
 {
-	for (int i = 0; i < m_items.size(); i++)
+	for (unsigned int i = 0; i < m_items.size(); i++)
 	{
 		if (name.compare(m_items[i]->m_name) == 0)
 		{
@@ -179,11 +181,49 @@ string ConfigCategory::getDescription(const string& name) const
  */
 string ConfigCategory::getDefault(const string& name) const
 {
-	for (int i = 0; i < m_items.size(); i++)
+	for (unsigned int i = 0; i < m_items.size(); i++)
 	{
 		if (name.compare(m_items[i]->m_name) == 0)
 		{
 			return m_items[i]->m_default;
+		}
+	}
+	throw new exception;
+}
+
+/**
+ * Return if the configuration item is a string item
+ *
+ * @param name		The name of the item to test
+ * @return bool		True if the item is a string type
+ * @throws exception	If the item was not found in the configuration category
+ */
+bool ConfigCategory::isString(const string& name) const
+{
+	for (unsigned int i = 0; i < m_items.size(); i++)
+	{
+		if (name.compare(m_items[i]->m_name) == 0)
+		{
+			return m_items[i]->m_itemType == CategoryItem::StringItem;
+		}
+	}
+	throw new exception;
+}
+
+/**
+ * Return if the configuration item is a JSON item
+ *
+ * @param name		The name of the item to test
+ * @return bool		True if the item is a JSON type
+ * @throws exception	If the item was not found in the configuration category
+ */
+bool ConfigCategory::isJSON(const string& name) const
+{
+	for (unsigned int i = 0; i < m_items.size(); i++)
+	{
+		if (name.compare(m_items[i]->m_name) == 0)
+		{
+			return m_items[i]->m_itemType == CategoryItem::JsonItem;
 		}
 	}
 	throw new exception;
@@ -204,7 +244,7 @@ string ConfigCategory::toJSON() const
 ostringstream convert;
 
 	convert << "{ \"key\" : \"" << m_name << "\", ";
-	convert << "\"description\" : \"" << m_description << "\", ";
+	convert << "\"description\" : \"" << m_description << "\", \"value\" : {";
 	for (auto it = m_items.cbegin(); it != m_items.cend(); it++)
 	{
 		convert << (*it)->toJSON();
@@ -213,7 +253,7 @@ ostringstream convert;
 			convert << ", ";
 		}
 	}
-	convert << "}";
+	convert << "} }";
 	return convert.str();
 }
 
@@ -235,12 +275,33 @@ ConfigCategory::CategoryItem::CategoryItem(const string& name, const Value& item
 		m_description = item["description"].GetString();
 	else
 		m_description = "";
-	if (item.HasMember("value"))
+	if (item.HasMember("value") && item["value"].IsString())
+	{
 		m_value = item["value"].GetString();
+		m_itemType = StringItem;
+	}
+	else if (item.HasMember("value") && item["value"].IsObject())
+	{
+		rapidjson::StringBuffer strbuf;
+		rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+		item["value"].Accept(writer);
+		m_value = strbuf.GetString();
+		m_itemType = JsonItem;
+	}
 	else
+	{
 		m_value = "";
-	if (item.HasMember("default"))
+	}
+	if (item.HasMember("default") && item["default"].IsString())
 		m_default = item["default"].GetString();
+	else if (item.HasMember("default") && item["default"].IsObject())
+	{
+		rapidjson::StringBuffer strbuf;
+		rapidjson::Writer<rapidjson::StringBuffer> writer(strbuf);
+		item["default"].Accept(writer);
+		m_default = strbuf.GetString();
+		m_itemType = JsonItem;
+	}
 	else
 		m_default = "";
 }
@@ -255,7 +316,15 @@ ostringstream convert;
 	convert << "\"" << m_name << "\" : { ";
 	convert << "\"description\" : \"" << m_description << "\", ";
 	convert << "\"type\" : \"" << m_type << "\", ";
-	convert << "\"value\" : \"" << m_value << "\", ";
-	convert << "\"default\" : \"" << m_default << "\" }";
+	if (m_itemType == StringItem)
+	{
+		convert << "\"value\" : \"" << m_value << "\", ";
+		convert << "\"default\" : \"" << m_default << "\" }";
+	}
+	else if (m_itemType == JsonItem)
+	{
+		convert << "\"value\" : " << m_value << ", ";
+		convert << "\"default\" : " << m_default << " }";
+	}
 	return convert.str();
 }
