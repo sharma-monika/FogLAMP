@@ -43,9 +43,7 @@ class SendingProcess : public FogLampProcess
 		void			updateDatabaseCounters();
 		bool			getLastSentReadingId();
 		const std::string	fetchConfiguration();
-		void			setDuration(unsigned int val) { m_duration = val; };
 		unsigned int		getDuration() const { return m_duration; };
-		void			setSleepTime(unsigned long val) { m_sleep = val; };
 		unsigned int		getSleepTime() const { return m_sleep; };
 		bool			getUpdateDb() const { return m_update_db; };
 		bool			setUpdateDb(bool val) {
@@ -53,6 +51,10 @@ class SendingProcess : public FogLampProcess
 						    return m_update_db;
 		};
 		unsigned long		getReadBlockSize() const { return m_block_size; };
+
+	private:
+		void			setDuration(unsigned int val) { m_duration = val; };
+		void			setSleepTime(unsigned long val) { m_sleep = val; };
 		void			setReadBlockSize(unsigned long size) { m_block_size = size; };
 
 	public:
