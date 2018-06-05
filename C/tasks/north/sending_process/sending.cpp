@@ -99,13 +99,13 @@ bool SendingProcess::loadPlugin(const string& pluginName)
                 Logger::getLogger()->error("Unable to fetch north plugin '%s' from configuration.", pluginName);
                 return false;
         }
-        Logger::getLogger()->info("Load south plugin '%s'.", pluginName.c_str());
+        Logger::getLogger()->info("Load north plugin '%s'.", pluginName.c_str());
 
         PLUGIN_HANDLE handle;
 
         if ((handle = manager->loadPlugin(pluginName, PLUGIN_TYPE_NORTH)) != NULL)
         {
-                Logger::getLogger()->info("Loaded south plugin '%s'.", pluginName.c_str());
+                Logger::getLogger()->info("Loaded north plugin '%s'.", pluginName.c_str());
                 m_plugin = new NorthPlugin(handle);
                 return true;
         }

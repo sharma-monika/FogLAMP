@@ -3,7 +3,7 @@
 /*
  * FogLAMP storage service.
  *
- * Copyright (c) 2017i-2018 OSisoft, LLC
+ * Copyright (c) 2017-2018 OSisoft, LLC
  *
  * Released under the Apache 2.0 Licence
  *
