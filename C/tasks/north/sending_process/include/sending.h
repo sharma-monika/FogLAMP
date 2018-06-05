@@ -36,8 +36,8 @@ class SendingProcess : public FogLampProcess
 		unsigned long		getLastSentId() const { return m_last_sent_id; };
 		unsigned long		getSentReadings() const { return m_tot_sent; };
 		bool			updateSentReadings(unsigned long num) {
-					m_tot_sent += num;
-					return m_tot_sent;
+						m_tot_sent += num;
+						return m_tot_sent;
 		};
 		void			resetSentReadings() { m_tot_sent = 0; };
 		void			updateDatabaseCounters();
@@ -56,6 +56,9 @@ class SendingProcess : public FogLampProcess
 		void			setDuration(unsigned int val) { m_duration = val; };
 		void			setSleepTime(unsigned long val) { m_sleep = val; };
 		void			setReadBlockSize(unsigned long size) { m_block_size = size; };
+		// Make private the copy constructor and operator=
+		SendingProcess(const SendingProcess &);
+                SendingProcess&		operator=(SendingProcess const &);
 
 	public:
 		std::vector<ReadingSet *>	m_buffer;
