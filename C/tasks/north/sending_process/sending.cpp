@@ -24,8 +24,6 @@
 // Configuration retrieved from the Configuration Manager
 #define CONFIG_CATEGORY_NAME "SEND_PR"
 #define CONFIG_CATEGORY_DESCRIPTION "Configuration of the Sending Process"
-// Complete the JSON data
-#define CONFIG_DEFAULT "{}"
 
 // Buffer max elements
 #define DATA_BUFFER_ELMS 10
@@ -58,9 +56,10 @@ SendingProcess::SendingProcess(int argc, char** argv) : FogLampProcess(argc, arg
 	// NorthPlugin
 	m_plugin = NULL;
 
-	// Set vars & counters to 0
+	// Set vars & counters to 0, false
 	m_last_sent_id  = 0;
 	m_tot_sent = 0;
+	m_update_db = false;
 
 	Logger::getLogger()->info("SendingProcess class init with stream id (%d), buffer elms (%d)",
 				  m_stream_id,
@@ -91,7 +90,7 @@ void SendingProcess::stopRunning()
  * @param    pluginName    The plugin to load
  * @return   true if loded, false otherwise 
  */
-bool SendingProcess::loadPlugin(string& pluginName)
+bool SendingProcess::loadPlugin(const string& pluginName)
 {
         PluginManager *manager = PluginManager::getInstance();
 
